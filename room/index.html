@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>へやのまごのて（試作）</title>
+<style>
+  :root{--bg:#f6f8fb;--ink:#26303a;--sub:#6b7785;--line:#dde3ea;--hot:#e8563f;--cold:#3d7fe0;--wood:#c99a4b}
+  *{box-sizing:border-box}
+  [hidden]{display:none !important}
+  html,body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:"Hiragino Maru Gothic ProN","Hiragino Sans","Noto Sans JP",system-ui,sans-serif}
+  @media (pointer:fine){ html, html *{cursor:none !important} }
+  .wrap{max-width:820px;margin:0 auto;padding:16px 16px 80px}
+  h1{margin:8px 0 2px;font-size:26px}
+  h1 small{font-size:13px;color:var(--sub);font-weight:normal;margin-left:6px}
+  .lead{margin:0 0 12px;color:var(--sub);font-size:14px;line-height:1.7}
+  #stage{position:relative;border-radius:16px;overflow:hidden;background:#fff;border:1px solid var(--line);touch-action:manipulation}
+  #map{display:block;width:100%;height:auto}
+  .pop{position:absolute;transform:translate(-50%,calc(-100% - 22px));background:#fff;border-radius:14px;
+    box-shadow:0 6px 20px rgba(0,0,0,.18);padding:10px 12px;width:220px;text-align:center;z-index:5}
+  .pop::after{content:"";position:absolute;left:50%;bottom:-8px;margin-left:-8px;border:8px solid transparent;border-top-color:#fff;border-bottom:0}
+  .pop .q{font-size:13px;color:var(--sub);margin-bottom:4px}
+  .pop .lv{font-size:13px;margin-bottom:8px}
+  .pop .lv b{letter-spacing:2px;color:var(--wood)}
+  .pop .btns{display:flex;gap:8px}
+  .pop button{flex:1;border:none;border-radius:10px;padding:10px 0;font-size:16px;font-weight:bold;color:#fff}
+  .pop .hot{background:var(--hot)} .pop .cold{background:var(--cold)}
+  .pop .x{position:absolute;right:6px;top:2px;background:none;color:var(--sub);font-size:16px;padding:2px 6px;flex:none}
+  .ring{position:absolute;width:40px;height:40px;margin:-20px 0 0 -20px;border-radius:50%;border:3px solid var(--wood);pointer-events:none;animation:pop .3s ease-out}
+  @keyframes pop{from{transform:scale(.3);opacity:0}to{transform:scale(1);opacity:1}}
+  .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#26303a;color:#fff;border-radius:12px;
+    padding:10px 16px;font-size:14px;opacity:0;transition:opacity .3s;z-index:20;pointer-events:none}
+  .toast.on{opacity:1}
+  .grid{display:grid;grid-template-columns:1fr;gap:12px;margin-top:12px}
+  @media (min-width:760px){ .grid{grid-template-columns:1.1fr .9fr} }
+  .card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px 16px}
+  .card h2{margin:0 0 8px;font-size:16px}
+  .advice{background:#fff7e8;border-radius:10px;padding:10px 12px;font-size:15px;line-height:1.7;margin-bottom:10px}
+  .zone{display:flex;align-items:center;gap:8px;font-size:14px;margin:6px 0}
+  .zone span:first-child{width:118px}
+  .pill{display:inline-block;border-radius:999px;padding:2px 10px;font-size:13px;font-weight:bold;color:#fff;min-width:64px;text-align:center}
+  .pill.h{background:var(--hot)} .pill.c{background:var(--cold)} .pill.n{background:#c7cfd8}
+  .log{font-size:13px;color:var(--sub);max-height:200px;overflow:auto;margin:0;padding:0;list-style:none}
+  .log li{padding:4px 0;border-bottom:1px dashed var(--line)}
+  .log b.h{color:var(--hot)} .log b.c{color:var(--cold)}
+  .ctl{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+  .btn{border:1px solid var(--line);background:#fff;border-radius:10px;padding:8px 12px;font-size:13px;font-weight:bold;color:var(--ink)}
+  .note{font-size:12px;color:var(--sub);line-height:1.7;margin-top:14px}
+  #hand{position:fixed;left:0;top:0;width:96px;height:96px;pointer-events:none;z-index:9999;opacity:0;transition:opacity .2s}
+  #hand img{width:96px;height:96px;display:block;filter:drop-shadow(1px 2px 1px rgba(0,0,0,.18))}
+  #hand.show{opacity:1}
+  #hand.scratch img{animation:scratch .12s ease-in-out 6 alternate}
+  @keyframes scratch{from{transform:translate(0,0)}to{transform:translate(-7px,7px)}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>へやのまごのて<small>試作版</small></h1>
+  <p class="lead">「ちょっと寒い」「暑すぎる」を、言い出しにくい人の代わりに伝える。<br>
+    自分のいる場所を孫の手で掻いて、あつい・さむいを選ぶだけ。名前は送らない。掻くほど「かゆさ」（強さ）が上がる。</p>
+
+  <div id="stage">
+    <canvas id="map" width="800" height="540"></canvas>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h2>エアコン係に届く内容（直近30分）</h2>
+      <div class="advice" id="advice"></div>
+      <div id="zones"></div>
+    </div>
+    <div class="card">
+      <h2>みんなの声（匿名）</h2>
+      <ul class="log" id="log"></ul>
+      <div class="ctl">
+        <button class="btn" id="auto">ほかの人の声：自動で増やす ON</button>
+        <button class="btn" id="clear">ぜんぶ消す</button>
+      </div>
+    </div>
+  </div>
+
+  <p class="note">仮の版です。声はこの端末の中だけで動いていて、「ほかの人の声」はデモ用の作り物です。本番は、送った声をサーバーに集めて、同じ部屋の全員とエアコン係の画面に出します。送るのは「場所・あつい/さむい・強さ・時刻」だけで、誰が送ったかは残しません。<br>
+    孫の手の絵：いらすとや ／ <a href="../">まごのて（写真の「これ何？」）へ</a></p>
+</div>
+
+<div id="hand"><img src="../magonote.png" alt=""></div>
+<div class="toast" id="toast"></div>
+
+<script>
+(() => {
+  const $ = s => document.querySelector(s);
+  const cv = $('#map'), g = cv.getContext('2d'), stage = $('#stage'), hand = $('#hand');
+  const W = 800, H = 540;
+  const ROOM = { x: 40, y: 40, w: 720, h: 460 };
+  const AC = { x: 150, y: 58 };
+  const WINDOW_MS = 30 * 60 * 1000;
+  let votes = [];          // {x,y,t:'h'|'c',lv,at,mine}
+  let pop = null;          // {x,y,lv,el,ring}
+  let auto = true;
+
+  // ---------- 孫の手カーソル ----------
+  const HOT_X = 84, HOT_Y = 7;
+  let hideTimer = null;
+  const moveHand = (x, y) => hand.style.transform = `translate(${x - HOT_X}px,${y - HOT_Y}px)`;
+  document.addEventListener('pointermove', e => { if (e.pointerType === 'mouse') { moveHand(e.clientX, e.clientY); hand.classList.add('show'); } });
+  document.addEventListener('pointerdown', e => {
+    moveHand(e.clientX, e.clientY); hand.classList.add('show');
+    hand.classList.remove('scratch'); void hand.offsetWidth; hand.classList.add('scratch');
+    if (e.pointerType !== 'mouse') { clearTimeout(hideTimer); hideTimer = setTimeout(() => hand.classList.remove('show'), 1200); }
+  });
+
+  // ---------- ゾーン ----------
+  function zoneOf(x, y){
+    if (Math.hypot(x - AC.x, y - AC.y) < 190) return 'エアコンの近く';
+    if (y < ROOM.y + ROOM.h * 0.3) return '窓ぎわ';
+    if (y > ROOM.y + ROOM.h * 0.72) return '廊下がわ';
+    if (x > ROOM.x + ROOM.w * 0.72) return '後ろのほう';
+    return '真ん中';
+  }
+  const ZONES = ['エアコンの近く', '窓ぎわ', '真ん中', '後ろのほう', '廊下がわ'];
+
+  // ---------- 描画 ----------
+  function drawRoom(){
+    g.clearRect(0, 0, W, H);
+    g.fillStyle = '#eef1f5'; g.fillRect(0, 0, W, H);
+    g.fillStyle = '#fbfaf6'; g.fillRect(ROOM.x, ROOM.y, ROOM.w, ROOM.h);
+    g.strokeStyle = '#5b6672'; g.lineWidth = 6; g.strokeRect(ROOM.x, ROOM.y, ROOM.w, ROOM.h);
+    // 窓（上の壁）
+    g.strokeStyle = '#8cc4f0'; g.lineWidth = 10;
+    for (let i = 0; i < 4; i++) { g.beginPath(); g.moveTo(250 + i * 128, ROOM.y); g.lineTo(350 + i * 128, ROOM.y); g.stroke(); }
+    label('窓', 560, 24);
+    // 黒板（左の壁）
+    g.fillStyle = '#2f5d4a'; g.fillRect(ROOM.x + 6, 170, 14, 220); label('黒板', 28, 160, 'left');
+    // 入口（下の壁、右）
+    g.strokeStyle = '#fbfaf6'; g.lineWidth = 10; g.beginPath(); g.moveTo(620, ROOM.y + ROOM.h); g.lineTo(700, ROOM.y + ROOM.h); g.stroke();
+    g.strokeStyle = '#5b6672'; g.lineWidth = 3; g.beginPath(); g.moveTo(620, ROOM.y + ROOM.h); g.lineTo(640, ROOM.y + ROOM.h - 60); g.stroke();
+    label('入口・廊下', 660, 528);
+    // エアコン
+    g.fillStyle = '#ffffff'; g.strokeStyle = '#7d8894'; g.lineWidth = 2;
+    roundRect(AC.x - 60, ROOM.y + 4, 120, 26, 6); g.fill(); g.stroke();
+    label('エアコン', AC.x, ROOM.y + 18, 'center', 12);
+    g.strokeStyle = 'rgba(232,86,63,.35)'; g.lineWidth = 2; g.setLineDash([6, 6]);
+    [-30, 0, 30].forEach(dx => { g.beginPath(); g.moveTo(AC.x + dx, ROOM.y + 34); g.quadraticCurveTo(AC.x + dx * 1.6, 110, AC.x + dx * 2.2 + 20, 150); g.stroke(); });
+    g.setLineDash([]);
+    // 机
+    g.fillStyle = '#e6d6bd'; g.strokeStyle = '#c9b391'; g.lineWidth = 1.5;
+    for (let r = 0; r < 4; r++) for (let c = 0; c < 6; c++) {
+      const x = 150 + c * 98, y = 130 + r * 88;
+      roundRect(x, y, 62, 38, 5); g.fill(); g.stroke();
+    }
+  }
+  function label(t, x, y, align = 'center', size = 14){ g.fillStyle = '#4b5563'; g.font = `bold ${size}px sans-serif`; g.textAlign = align; g.textBaseline = 'middle'; g.fillText(t, x, y); }
+  function roundRect(x, y, w, h, r){ g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
+
+  function drawHeat(){
+    const now = Date.now();
+    votes.forEach(v => {
+      const age = (now - v.at) / WINDOW_MS; if (age > 1) return;
+      const fade = 1 - age * 0.7, rad = 60 + v.lv * 16, a = (0.16 + v.lv * 0.1) * fade;
+      const col = v.t === 'h' ? '232,86,63' : '61,127,224';
+      const gr = g.createRadialGradient(v.x, v.y, 0, v.x, v.y, rad);
+      gr.addColorStop(0, `rgba(${col},${a})`); gr.addColorStop(1, `rgba(${col},0)`);
+      g.fillStyle = gr; g.beginPath(); g.arc(v.x, v.y, rad, 0, Math.PI * 2); g.fill();
+    });
+    votes.forEach(v => {
+      if ((now - v.at) > WINDOW_MS) return;
+      g.font = '20px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.fillText(v.t === 'h' ? '🥵' : '🥶', v.x, v.y);
+      if (v.mine) { g.strokeStyle = '#c99a4b'; g.lineWidth = 2; g.beginPath(); g.arc(v.x, v.y, 15, 0, Math.PI * 2); g.stroke(); }
+    });
+  }
+  function draw(){ drawRoom(); drawHeat(); }
+
+  // ---------- 掻く → 選ぶ ----------
+  cv.addEventListener('pointerdown', e => {
+    const r = cv.getBoundingClientRect();
+    const x = (e.clientX - r.left) * W / r.width, y = (e.clientY - r.top) * H / r.height;
+    if (x < ROOM.x || x > ROOM.x + ROOM.w || y < ROOM.y || y > ROOM.y + ROOM.h) return;
+    if (pop && Math.hypot(x - pop.x, y - pop.y) < 50) { pop.lv = Math.min(3, pop.lv + 1); updatePop(); return; }
+    openPop(x, y);
+  });
+  function openPop(x, y){
+    closePop();
+    const el = document.createElement('div'); el.className = 'pop';
+    el.innerHTML = `<button class="x" aria-label="閉じる">×</button>
+      <div class="q">${zoneOf(x, y)}のあたり、どう？</div>
+      <div class="lv">かゆさ <b></b>（同じ場所をもっと掻くと強くなる）</div>
+      <div class="btns"><button class="hot">🥵 あつい</button><button class="cold">🥶 さむい</button></div>`;
+    const ring = document.createElement('div'); ring.className = 'ring';
+    [el, ring].forEach(n => { n.style.left = (x / W * 100) + '%'; n.style.top = (y / H * 100) + '%'; });
+    stage.append(ring, el);
+    pop = { x, y, lv: 1, el, ring };
+    el.querySelector('.hot').addEventListener('click', ev => { ev.stopPropagation(); send('h'); });
+    el.querySelector('.cold').addEventListener('click', ev => { ev.stopPropagation(); send('c'); });
+    el.querySelector('.x').addEventListener('click', ev => { ev.stopPropagation(); closePop(); });
+    el.addEventListener('pointerdown', ev => ev.stopPropagation());
+    updatePop();
+  }
+  function updatePop(){ pop.el.querySelector('.lv b').textContent = '●'.repeat(pop.lv) + '○'.repeat(3 - pop.lv); }
+  function closePop(){ if (pop) { pop.el.remove(); pop.ring.remove(); pop = null; } }
+  function send(t){
+    votes.push({ x: pop.x, y: pop.y, t, lv: pop.lv, at: Date.now(), mine: true });
+    closePop(); refresh();
+    toast(`匿名で送りました（${t === 'h' ? 'あつい' : 'さむい'}・かゆさ${'●'.repeat(votes[votes.length - 1].lv)}）`);
+  }
+  let tt = null;
+  function toast(s){ const el = $('#toast'); el.textContent = s; el.classList.add('on'); clearTimeout(tt); tt = setTimeout(() => el.classList.remove('on'), 2200); }
+
+  // ---------- まとめ ----------
+  function refresh(){
+    draw();
+    const now = Date.now(), recent = votes.filter(v => now - v.at <= WINDOW_MS);
+    const z = {}; ZONES.forEach(n => z[n] = { h: 0, c: 0 });
+    recent.forEach(v => { z[zoneOf(v.x, v.y)][v.t] += v.lv; });
+    $('#zones').innerHTML = ZONES.map(n => {
+      const { h, c } = z[n], d = h - c;
+      const pill = d >= 2 ? `<span class="pill h">あつい ${h}</span>` : d <= -2 ? `<span class="pill c">さむい ${c}</span>` : (h + c ? `<span class="pill n">半々</span>` : `<span class="pill n">声なし</span>`);
+      return `<div class="zone"><span>${n}</span>${pill}</div>`;
+    }).join('');
+    $('#advice').innerHTML = advice(z, recent.length);
+    $('#log').innerHTML = recent.slice().sort((a, b) => b.at - a.at).slice(0, 30).map(v => {
+      const tm = new Date(v.at).toTimeString().slice(0, 5);
+      return `<li>${tm}　${zoneOf(v.x, v.y)}　<b class="${v.t}">${v.t === 'h' ? 'あつい' : 'さむい'}</b>　${'●'.repeat(v.lv)}${v.mine ? '（あなた）' : ''}</li>`;
+    }).join('') || '<li>まだ声はありません</li>';
+  }
+  function advice(z, n){
+    if (!n) return 'まだ声がありません。';
+    const H = ZONES.reduce((s, k) => s + z[k].h, 0), C = ZONES.reduce((s, k) => s + z[k].c, 0);
+    const hotZ = ZONES.filter(k => z[k].h - z[k].c >= 2), coldZ = ZONES.filter(k => z[k].c - z[k].h >= 2);
+    if (hotZ.length && coldZ.length) return `<b>場所で差が出ています。</b>${hotZ.join('・')}が暑くて、${coldZ.join('・')}が寒い。設定温度はそのままで、風向きを${coldZ[0]}に向けるか、サーキュレーターで空気を回すのがよさそう。`;
+    if (C - H >= 3) return `<b>全体に寒いようです。</b>設定を1℃上げてみる。`;
+    if (H - C >= 3) return `<b>全体に暑いようです。</b>設定を1℃下げてみる。`;
+    return 'いまのところ、大きな偏りはありません。';
+  }
+
+  // ---------- デモ用のほかの人の声 ----------
+  function fake(t, x, y, lv, minsAgo){ votes.push({ x, y, t, lv, at: Date.now() - minsAgo * 60000, mine: false }); }
+  function seed(){
+    fake('h', 170, 160, 3, 18); fake('h', 230, 190, 2, 12); fake('h', 150, 230, 2, 6);
+    fake('c', 470, 120, 2, 20); fake('c', 600, 130, 3, 9); fake('c', 690, 150, 2, 4); fake('c', 540, 110, 1, 2);
+    fake('c', 560, 460, 1, 14);
+  }
+  function randomVote(){
+    const r = Math.random();
+    if (r < 0.35) fake('h', 140 + Math.random() * 150, 120 + Math.random() * 140, 1 + (Math.random() * 3 | 0), 0);
+    else if (r < 0.8) fake('c', 420 + Math.random() * 300, 90 + Math.random() * 90, 1 + (Math.random() * 3 | 0), 0);
+    else fake(Math.random() < .5 ? 'h' : 'c', 120 + Math.random() * 600, 120 + Math.random() * 360, 1, 0);
+    refresh();
+  }
+  setInterval(() => { if (auto) randomVote(); }, 7000);
+  setInterval(() => refresh(), 30000);
+  $('#auto').addEventListener('click', () => { auto = !auto; $('#auto').textContent = `ほかの人の声：自動で増やす ${auto ? 'ON' : 'OFF'}`; });
+  $('#clear').addEventListener('click', () => { votes = []; closePop(); refresh(); });
+
+  seed(); refresh();
+})();
+</script>
+</body>
+</html>

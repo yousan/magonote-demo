@@ -1,0 +1,447 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>まごのて（試作）</title>
+<style>
+  :root{
+    --bg:#fff8ef; --ink:#3a2a1f; --sub:#7a6555; --wood:#c99a4b; --card:#ffffff;
+    --accent:#e0703a; --line:#ecdcc8; --good:#4f9a6a;
+  }
+  *{box-sizing:border-box}
+  [hidden]{display:none !important}
+  html,body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:"Hiragino Maru Gothic ProN","Hiragino Sans","Noto Sans JP",system-ui,sans-serif;}
+  @media (pointer:fine){ html, html *{cursor:none !important;} }
+  .wrap{max-width:720px;margin:0 auto;padding:16px 16px 80px}
+  header h1{margin:8px 0 2px;font-size:28px;letter-spacing:.05em}
+  header h1 small{font-size:13px;color:var(--sub);font-weight:normal;margin-left:6px}
+  header p{margin:0 0 12px;color:var(--sub);font-size:14px}
+  .tabs{display:flex;gap:8px;margin:12px 0}
+  .tabs button{flex:1;padding:12px 8px;border-radius:14px;border:2px solid var(--line);
+    background:#fff;font-size:15px;font-weight:bold;color:var(--sub)}
+  .tabs button.on{border-color:var(--wood);background:#fff3df;color:var(--ink)}
+  .controls{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+  .btn{display:inline-block;padding:10px 14px;border-radius:12px;border:none;font-size:14px;
+    font-weight:bold;background:var(--wood);color:#fff}
+  .btn.ghost{background:#fff;color:var(--ink);border:2px solid var(--line)}
+  .btn.small{padding:7px 10px;font-size:13px}
+  #stage{position:relative;background:#fff;border:2px dashed var(--line);border-radius:16px;
+    min-height:220px;display:flex;align-items:center;justify-content:center;overflow:hidden;touch-action:manipulation}
+  #photo{display:none;width:100%;height:auto}
+  #stage.has #photo{display:block}
+  #hint{padding:28px 16px;text-align:center;color:var(--sub);font-size:14px;line-height:1.8}
+  #stage.has #hint{display:none}
+  .marker{position:absolute;width:46px;height:46px;margin:-23px 0 0 -23px;border-radius:50%;
+    border:3px solid var(--accent);box-shadow:0 0 0 4px rgba(224,112,58,.25);pointer-events:none;
+    animation:pop .35s ease-out}
+  .kaki{position:absolute;transform:translate(8px,-38px);font-weight:bold;color:var(--accent);
+    font-size:15px;pointer-events:none;text-shadow:0 1px 0 #fff;animation:float 1s ease-out forwards}
+  @keyframes pop{from{transform:scale(.3);opacity:0}to{transform:scale(1);opacity:1}}
+  @keyframes float{0%{opacity:0}20%{opacity:1}100%{opacity:0;transform:translate(14px,-58px)}}
+  #result{margin-top:14px}
+  .card{background:var(--card);border-radius:16px;padding:14px 16px;border:1px solid var(--line);
+    box-shadow:0 2px 0 rgba(0,0,0,.03);margin-bottom:12px}
+  .sent{display:flex;gap:10px;align-items:center;font-size:12px;color:var(--sub);flex-wrap:wrap;
+    border-bottom:1px dashed var(--line);padding-bottom:10px;margin-bottom:10px}
+  .sent canvas{border-radius:8px;border:1px solid var(--line);background:#fafafa}
+  .sent .lbl{font-weight:bold;color:var(--ink)}
+  .card h2{margin:4px 0 6px;font-size:19px}
+  .card p{margin:6px 0;line-height:1.7;font-size:15px}
+  .tip{background:#f1f8f3;border-radius:10px;padding:8px 10px;color:#2f5e40;font-size:14px}
+  .kari{display:inline-block;font-size:11px;background:#fde2d4;color:#9a4422;border-radius:6px;padding:1px 6px;margin-left:6px;vertical-align:middle}
+  .bars{margin:8px 0}
+  .bar{display:flex;align-items:center;gap:8px;font-size:13px;margin:4px 0}
+  .bar span{width:70px}
+  .bar i{flex:1;height:10px;background:#f2e8dc;border-radius:6px;overflow:hidden;position:relative}
+  .bar i b{position:absolute;left:0;top:0;bottom:0;background:var(--accent);border-radius:6px}
+  .bar em{width:30px;text-align:right;font-style:normal;color:var(--sub)}
+  .row{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 4px}
+  .prods{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:8px;margin-top:8px}
+  .prod{border:1px solid var(--line);border-radius:12px;padding:10px;display:flex;gap:10px;align-items:flex-start;background:#fffdf9}
+  .sw{width:34px;height:34px;border-radius:50%;flex:none;border:2px solid #fff;box-shadow:0 0 0 1px var(--line)}
+  .prod b{display:block;font-size:13px}
+  .prod small{display:block;color:var(--sub);font-size:12px;line-height:1.5}
+  .prod .btn{margin-top:6px}
+  .note{font-size:12px;color:var(--sub);line-height:1.6}
+  .loading{color:var(--sub);font-size:15px}
+  footer{margin-top:24px;font-size:12px;color:var(--sub);line-height:1.7}
+  #hand{position:fixed;left:0;top:0;width:96px;height:96px;pointer-events:none;z-index:9999;
+    opacity:0;transition:opacity .2s;will-change:transform}
+  #hand img{width:96px;height:96px;display:block;filter:drop-shadow(1px 2px 1px rgba(0,0,0,.18))}
+  #hand.show{opacity:1}
+  #hand.scratch img{animation:scratch .12s ease-in-out 6 alternate}
+  @keyframes scratch{from{transform:translate(0,0)}to{transform:translate(-7px,7px)}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>まごのて<small>試作版</small></h1>
+    <p>写真の「ここ何？」「ここ気になる」を孫の手で掻くと、そこだけ教えてくれる。</p>
+  </header>
+
+  <nav class="tabs">
+    <button data-mode="thing" class="on">これ何？</button>
+    <button data-mode="skin">肌の気になるところ</button>
+  </nav>
+
+  <div class="controls">
+    <label class="btn">写真を選ぶ<input type="file" accept="image/*" id="file" hidden></label>
+    <button class="btn ghost" id="sample">サンプルで試す</button>
+    <button class="btn ghost" id="reset" hidden>元に戻す</button>
+    <button class="btn ghost" id="compare" hidden>前と後を比べる</button>
+  </div>
+
+  <div id="stage">
+    <canvas id="photo"></canvas>
+    <div id="hint">写真を選ぶか「サンプルで試す」を押して、<br>気になるところを孫の手で掻いて（タップして）ください。</div>
+  </div>
+
+  <section id="result"></section>
+
+  <footer>
+    仮の版です。AIの答えは作り物で、本番では写真全体と掻いた場所の切り抜き・座標を画像の読めるAI（肌はYouCam API）に送ります。<br>
+    化粧品はすべて架空の商品です。化粧品で肌トラブルが「治る」わけではありません。赤みや痛みが強いときは皮膚科へ。<br>
+    孫の手の絵：いらすとや ／ <a href="room/">へやのまごのて（部屋の暑い・寒いを匿名で）へ</a>
+  </footer>
+</div>
+
+<div id="hand"><img src="magonote.png" alt=""></div>
+
+<script>
+(() => {
+  const $ = s => document.querySelector(s);
+  const stage = $('#stage'), cv = $('#photo'), ctx = cv.getContext('2d');
+  const result = $('#result'), hand = $('#hand');
+  const HOT_X = 84, HOT_Y = 7;            // 孫の手の先（指）の位置
+  let mode = 'thing';
+  let source = null;   // 元の画像（canvas）
+  let work = null;     // 加工後（canvas）
+  let sample = null;   // 'tag' | 'face' | null
+  let showingBefore = false;
+  let busy = false;
+
+  // ---------- 孫の手カーソル ----------
+  const fine = matchMedia('(pointer:fine)').matches;
+  let hideTimer = null;
+  function moveHand(x, y){ hand.style.transform = `translate(${x - HOT_X}px, ${y - HOT_Y}px)`; }
+  document.addEventListener('pointermove', e => {
+    if (e.pointerType === 'mouse') { moveHand(e.clientX, e.clientY); hand.classList.add('show'); }
+  });
+  document.addEventListener('pointerleave', () => { if (fine) hand.classList.remove('show'); });
+  document.addEventListener('pointerdown', e => {
+    moveHand(e.clientX, e.clientY);
+    hand.classList.add('show');
+    hand.classList.remove('scratch'); void hand.offsetWidth; hand.classList.add('scratch');
+    if (e.pointerType !== 'mouse') {
+      clearTimeout(hideTimer);
+      hideTimer = setTimeout(() => hand.classList.remove('show'), 1200);
+    }
+  });
+
+  // ---------- モード ----------
+  document.querySelectorAll('.tabs button').forEach(b => b.addEventListener('click', () => {
+    mode = b.dataset.mode;
+    document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('on', x === b));
+    result.innerHTML = '';
+    clearMarks();
+    if (sample) loadSample();
+    updateButtons();
+  }));
+
+  // ---------- 画像の読み込み ----------
+  $('#file').addEventListener('change', e => {
+    const f = e.target.files && e.target.files[0];
+    if (!f) return;
+    const url = URL.createObjectURL(f);
+    const im = new Image();
+    im.onload = () => {
+      const max = 1600, s = Math.min(1, max / Math.max(im.naturalWidth, im.naturalHeight));
+      const c = document.createElement('canvas');
+      c.width = Math.round(im.naturalWidth * s); c.height = Math.round(im.naturalHeight * s);
+      c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url);
+      setSource(c, null);
+    };
+    im.src = url;
+    e.target.value = '';
+  });
+  $('#sample').addEventListener('click', loadSample);
+  function loadSample(){ setSource(mode === 'skin' ? makeFace() : makeTag(), mode === 'skin' ? 'face' : 'tag'); }
+
+  function setSource(c, kind){
+    source = c; sample = kind;
+    work = cloneCanvas(c);
+    showingBefore = false;
+    stage.classList.add('has');
+    render();
+    result.innerHTML = '';
+    clearMarks();
+    updateButtons();
+  }
+  function cloneCanvas(c){ const n = document.createElement('canvas'); n.width = c.width; n.height = c.height; n.getContext('2d').drawImage(c, 0, 0); return n; }
+  function render(){
+    const src = showingBefore ? source : work;
+    cv.width = src.width; cv.height = src.height;
+    ctx.drawImage(src, 0, 0);
+  }
+  function updateButtons(){
+    const edited = mode === 'skin' && !!source;
+    $('#reset').hidden = !edited;
+    $('#compare').hidden = !edited;
+  }
+  $('#reset').addEventListener('click', () => { if (!source) return; work = cloneCanvas(source); showingBefore = false; render(); $('#compare').textContent = '前と後を比べる'; });
+  $('#compare').addEventListener('click', () => {
+    if (!source) return;
+    showingBefore = !showingBefore; render();
+    $('#compare').textContent = showingBefore ? '今の状態に戻す' : '前と後を比べる';
+  });
+
+  // ---------- 掻く ----------
+  cv.addEventListener('pointerdown', e => {
+    if (!source || busy) return;
+    const r = cv.getBoundingClientRect();
+    const nx = (e.clientX - r.left) / r.width, ny = (e.clientY - r.top) / r.height;
+    if (nx < 0 || nx > 1 || ny < 0 || ny > 1) return;
+    scratchAt(nx, ny);
+  });
+
+  function clearMarks(){ stage.querySelectorAll('.marker,.kaki').forEach(n => n.remove()); }
+  function mark(nx, ny){
+    clearMarks();
+    const m = document.createElement('div'); m.className = 'marker';
+    m.style.left = (nx * 100) + '%'; m.style.top = (ny * 100) + '%';
+    const k = document.createElement('div'); k.className = 'kaki'; k.textContent = 'かきかき';
+    k.style.left = (nx * 100) + '%'; k.style.top = (ny * 100) + '%';
+    stage.append(m, k);
+  }
+
+  function crops(nx, ny){
+    const W = work.width, H = work.height, size = Math.round(Math.min(W, H) * 0.24);
+    const sx = Math.max(0, Math.min(W - size, nx * W - size / 2));
+    const sy = Math.max(0, Math.min(H - size, ny * H - size / 2));
+    const crop = document.createElement('canvas'); crop.width = crop.height = 96;
+    crop.getContext('2d').drawImage(work, sx, sy, size, size, 0, 0, 96, 96);
+    const all = document.createElement('canvas'); const tw = 96, th = Math.round(96 * H / W);
+    all.width = tw; all.height = th;
+    const ag = all.getContext('2d'); ag.drawImage(work, 0, 0, tw, th);
+    ag.strokeStyle = '#e0703a'; ag.lineWidth = 2;
+    ag.strokeRect(sx * tw / W, sy * th / H, size * tw / W, size * th / H);
+    return { crop, all };
+  }
+
+  function scratchAt(nx, ny){
+    mark(nx, ny);
+    busy = true;
+    const { crop, all } = crops(nx, ny);
+    const sent = document.createElement('div'); sent.className = 'sent';
+    sent.innerHTML = '<span class="lbl">AIに送る内容</span>';
+    const meta = document.createElement('span');
+    meta.textContent = `全体 ＋ 切り抜き ＋ 座標（横 ${Math.round(nx * 100)}%・縦 ${Math.round(ny * 100)}%）・${mode === 'skin' ? '肌モード（YouCam API）' : 'これ何？モード'}`;
+    sent.append(all, crop, meta);
+    const card = document.createElement('div'); card.className = 'card';
+    card.append(sent);
+    const body = document.createElement('div'); body.className = 'loading'; body.textContent = '孫の手で掻いています…';
+    card.append(body);
+    result.innerHTML = ''; result.append(card);
+    setTimeout(() => {
+      busy = false;
+      body.className = '';
+      if (mode === 'skin') renderSkin(body, nx, ny); else renderThing(body, nx, ny);
+      card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }, 750);
+  }
+
+  // ---------- これ何？ ----------
+  const TAG = [
+    { t: '洗濯機で洗える（40℃まで）', b: '洗濯おけに「40」は、液温40℃までなら洗濯機でふつうに洗えるという意味。', tip: '普通コースでOK。お湯を使うなら40℃まで。' },
+    { t: '漂白剤は使えない', b: '三角に×は、塩素系も酸素系も、漂白剤は使えないという意味。', tip: 'シミは漂白剤ではなく、その部分だけ中性洗剤でもみ洗い。' },
+    { t: '乾燥機は低温なら使える', b: '四角に丸、中に点が1つは、乾燥機（タンブル乾燥）が低い温度なら使えるという意味。排気の温度は60℃まで。', tip: '乾燥機の「低温」や「おしゃれ着」コースを選ぶ。' },
+    { t: 'アイロンは中くらいの温度（150℃まで）', b: 'アイロンの中に点が2つは、底の温度150℃までという意味。', tip: '当て布をすると、テカりにくい。' },
+    { t: 'ドライクリーニングできる', b: '丸に「P」は、クリーニング店のドライクリーニング（パークロロエチレンや石油系の溶剤）ができるという意味。', tip: 'お店に出すとき、このタグを見せれば伝わる。' },
+  ];
+  const TAG_TEXT = { t: '素材：綿100%', b: '綿は水や熱で縮みやすい素材。', tip: '最初の数回は乾燥機を避けると、縮みにくい。' };
+
+  function renderThing(el, nx, ny){
+    let a;
+    if (sample === 'tag') {
+      if (ny > 0.2 && ny < 0.5) {
+        const i = Math.max(0, Math.min(4, Math.round((nx * 800 - 160) / 120)));
+        a = TAG[i];
+      } else a = TAG_TEXT;
+      el.innerHTML = `<h2>${a.t}</h2><p>${a.b}</p><p class="tip">${a.tip}</p>`;
+    } else {
+      el.innerHTML = `<h2>ここに AI の答えが出ます<span class="kari">仮</span></h2>
+        <p>本番では、上の「全体」と「切り抜き」と座標を、画像の読めるAIに送って「掻いたところは何で、どう使うか」を聞きます。</p>
+        <p class="tip">例：エアコンのリモコンの「内部クリーン」ボタン → 冷房のあとに中を乾かしてカビを防ぐボタン。押しっぱなしにしなくていい。</p>`;
+    }
+  }
+
+  // ---------- 肌 ----------
+  const CONCERNS = { akami: '赤み', ato: 'ニキビ跡', keana: '毛穴', kuma: 'くま', hishi: '皮脂・テカリ', kanso: '乾燥' };
+  const AREA_COMMENT = {
+    akami: 'ほほに赤みが少し出ています。こすらず、保湿を先に。',
+    ato: '小さなニキビ跡がいくつかあります。触らないのが一番の近道。',
+    keana: '小鼻のまわりの毛穴が目立ちやすくなっています。',
+    kuma: '目の下が少し暗く見えます。寝不足のサインかも。',
+    hishi: 'おでこの皮脂が多めです。ニキビができやすい場所。',
+    kanso: '口のまわりが乾きやすくなっています。',
+  };
+  const PRODUCTS = [
+    { k: 'akami', n: 'ミドリノテ カラーベース', s: 'コントロールカラー（グリーン）', c: '#9fd3a0', d: '緑で赤みを打ち消して、目立たなくする', p: '¥1,320' },
+    { k: 'akami', n: 'カユミナシ スポットコンシーラー 01', s: 'コンシーラー（ナチュラル）', c: '#f3d2b8', d: '赤いところにだけ、ちょんと乗せる', p: '¥990' },
+    { k: 'ato', n: 'アトカクレ 2色パレット', s: 'コンシーラー（2色）', c: '#f2cfb4', d: '2色を混ぜて、跡の色に合わせる', p: '¥1,540' },
+    { k: 'ato', n: 'ポツリ ピンポイントスティック', s: 'スティックコンシーラー', c: '#f4d4bb', d: '細い先で、小さな跡を狙って隠す', p: '¥1,100' },
+    { k: 'keana', n: 'ケアナフラット 下地', s: '毛穴カバー下地', c: '#f2e2d3', d: '凹凸をならして、毛穴を目立たなくする', p: '¥1,650' },
+    { k: 'keana', n: 'サラリノテ フェイスパウダー', s: 'ルースパウダー', c: '#f6ece2', d: '仕上げにはたいて、ふんわり見せる', p: '¥1,210' },
+    { k: 'kuma', n: 'ヨフカシ オレンジベース', s: 'コントロールカラー（オレンジ）', c: '#f3b07e', d: '青っぽいくまをオレンジで打ち消す', p: '¥1,430' },
+    { k: 'kuma', n: 'メノシタ ハイライト', s: 'ハイライト', c: '#f8e3c8', d: '目の下を明るく見せる', p: '¥1,180' },
+    { k: 'hishi', n: 'テカラン 皮脂吸着パウダー', s: 'プレストパウダー', c: '#f1e6da', d: '皮脂を吸って、テカリを抑える', p: '¥1,320' },
+    { k: 'hishi', n: 'オデコサラ 下地', s: '皮脂くずれ防止下地', c: '#efe0cf', d: 'おでこのテカリを出にくくする', p: '¥1,540' },
+    { k: 'kanso', n: 'シットリノテ 保湿バーム', s: '保湿バーム', c: '#f7dcc8', d: '口のまわりの乾きに、薄く塗る', p: '¥1,100' },
+    { k: 'kanso', n: 'ウルオイ ミスト', s: '化粧水ミスト', c: '#dbeef5', d: 'メイクの上から、乾いたときに', p: '¥880' },
+  ];
+
+  function skinArea(nx, ny){
+    if (ny < 0.46) return ['おでこ', 'hishi'];
+    if (ny < 0.62 && (nx < 0.44 || nx > 0.56)) return [nx < 0.5 ? '右目の下' : '左目の下', 'kuma'];
+    if (nx >= 0.43 && nx <= 0.57 && ny < 0.69) return ['小鼻のまわり', 'keana'];
+    if (ny < 0.76) return nx < 0.5 ? ['右のほほ', 'akami'] : ['左のほほ', 'ato'];
+    return ['口のまわり', 'kanso'];
+  }
+  function seeded(nx, ny, i){ const v = Math.sin(nx * 91.7 + ny * 37.3 + i * 13.1) * 43758.5; return v - Math.floor(v); }
+
+  function renderSkin(el, nx, ny){
+    const [area, key] = skinArea(nx, ny);
+    const keys = Object.keys(CONCERNS);
+    const scores = keys.map((k, i) => [k, k === key ? 62 + Math.round(seeded(nx, ny, i) * 15) : 8 + Math.round(seeded(nx, ny, i) * 32)])
+      .sort((a, b) => b[1] - a[1]).slice(0, 4);
+    const isKari = sample !== 'face';
+    el.innerHTML = `<h2>${area}：${CONCERNS[key]}${isKari ? '<span class="kari">仮</span>' : ''}</h2>
+      <p>${AREA_COMMENT[key]}</p>
+      <div class="bars">${scores.map(([k, v]) => `<div class="bar"><span>${CONCERNS[k]}</span><i><b style="width:${v}%"></b></i><em>${v}</em></div>`).join('')}</div>
+      <div class="row">
+        <button class="btn small" data-act="erase">消してみる</button>
+      </div>
+      <p class="note">「消してみる」は、本番では YouCam の「AI肌改善シミュレーション」で前後を出します（この版はぼかしで代用）。</p>
+      <h2 style="font-size:16px;margin-top:14px">隠すなら、この辺り</h2>
+      <div class="prods">${PRODUCTS.filter(p => p.k === key).map((p, i) => `
+        <div class="prod"><div class="sw" style="background:${p.c}"></div>
+          <div><b>${p.n}</b><small>${p.s}・${p.p}</small><small>${p.d}</small>
+          <button class="btn small ghost" data-act="try" data-color="${p.c}">塗ってみる</button></div></div>`).join('')}
+      </div>
+      <p class="note">商品はすべて架空です。本番の「塗ってみる」は YouCam の「バーチャルメイク」を使います。化粧品は目立たなくするためのもので、治すものではありません。赤みや痛みが強いときは皮膚科へ。</p>`;
+    el.querySelector('[data-act="erase"]').addEventListener('click', () => { smoothAt(nx, ny); afterEdit(); });
+    el.querySelectorAll('[data-act="try"]').forEach(b => b.addEventListener('click', () => { smoothAt(nx, ny); tintAt(nx, ny, b.dataset.color); afterEdit(); }));
+  }
+  function afterEdit(){ showingBefore = false; render(); $('#compare').textContent = '前と後を比べる'; }
+
+  function smoothAt(nx, ny){
+    const W = work.width, H = work.height, x = nx * W, y = ny * H, r = Math.min(W, H) * 0.075;
+    const g = work.getContext('2d');
+    const size = Math.ceil(r * 2.6), sx = Math.round(x - size / 2), sy = Math.round(y - size / 2);
+    const tiny = document.createElement('canvas'); tiny.width = tiny.height = 7;
+    const tg = tiny.getContext('2d'); tg.imageSmoothingEnabled = true;
+    tg.drawImage(work, sx, sy, size, size, 0, 0, 7, 7);
+    const mid = document.createElement('canvas'); mid.width = mid.height = 28;
+    const mg = mid.getContext('2d'); mg.imageSmoothingEnabled = true; mg.drawImage(tiny, 0, 0, 28, 28);
+    [[1.25, .45], [1.0, .9]].forEach(([k, a]) => {
+      g.save(); g.beginPath(); g.arc(x, y, r * k, 0, Math.PI * 2); g.clip();
+      g.globalAlpha = a; g.imageSmoothingEnabled = true; g.drawImage(mid, sx, sy, size, size);
+      g.restore();
+    });
+  }
+  function tintAt(nx, ny, color){
+    const W = work.width, H = work.height, x = nx * W, y = ny * H, r = Math.min(W, H) * 0.09;
+    const g = work.getContext('2d');
+    const grad = g.createRadialGradient(x, y, 0, x, y, r);
+    grad.addColorStop(0, hexA(color, .34)); grad.addColorStop(.6, hexA(color, .2)); grad.addColorStop(1, hexA(color, 0));
+    g.save(); g.fillStyle = grad; g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill(); g.restore();
+  }
+  function hexA(hex, a){ const n = parseInt(hex.slice(1), 16); return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`; }
+
+  // ---------- サンプル画像 ----------
+  function makeTag(){
+    const c = document.createElement('canvas'); c.width = 800; c.height = 500;
+    const g = c.getContext('2d');
+    g.fillStyle = '#e9edf2'; g.fillRect(0, 0, 800, 500);
+    g.fillStyle = 'rgba(0,0,0,.08)'; roundRect(g, 66, 48, 680, 420, 18); g.fill();
+    g.fillStyle = '#fff'; roundRect(g, 60, 40, 680, 420, 18); g.fill();
+    g.setLineDash([6, 6]); g.strokeStyle = '#c9d0d8'; g.lineWidth = 2; roundRect(g, 76, 56, 648, 388, 12); g.stroke(); g.setLineDash([]);
+    g.strokeStyle = '#222'; g.fillStyle = '#222'; g.lineWidth = 5; g.lineJoin = 'round'; g.lineCap = 'round';
+    // 0 洗濯おけ 40
+    g.beginPath(); g.moveTo(116, 138);
+    for (let i = 0; i < 4; i++) g.quadraticCurveTo(127 + i * 22, 126, 138 + i * 22, 138);
+    g.lineTo(194, 206); g.lineTo(126, 206); g.closePath(); g.stroke();
+    g.font = 'bold 30px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('40', 160, 176);
+    // 1 三角に×
+    g.beginPath(); g.moveTo(280, 126); g.lineTo(328, 206); g.lineTo(232, 206); g.closePath(); g.stroke();
+    g.beginPath(); g.moveTo(240, 132); g.lineTo(320, 212); g.moveTo(320, 132); g.lineTo(240, 212); g.stroke();
+    // 2 四角に丸・点1
+    g.strokeRect(362, 128, 76, 76); g.beginPath(); g.arc(400, 166, 30, 0, Math.PI * 2); g.stroke();
+    g.beginPath(); g.arc(400, 166, 5, 0, Math.PI * 2); g.fill();
+    // 3 アイロン・点2
+    g.beginPath(); g.moveTo(474, 204); g.lineTo(568, 204); g.lineTo(568, 176);
+    g.quadraticCurveTo(566, 146, 532, 146); g.lineTo(500, 146); g.quadraticCurveTo(478, 156, 474, 204); g.closePath(); g.stroke();
+    g.beginPath(); g.moveTo(510, 146); g.lineTo(514, 128); g.lineTo(556, 128); g.lineTo(558, 146); g.stroke();
+    g.beginPath(); g.arc(510, 180, 5, 0, Math.PI * 2); g.arc(532, 180, 5, 0, Math.PI * 2); g.fill();
+    // 4 丸にP
+    g.beginPath(); g.arc(640, 166, 38, 0, Math.PI * 2); g.stroke();
+    g.font = 'bold 42px sans-serif'; g.fillText('P', 640, 168);
+    // 文字
+    g.font = 'bold 40px sans-serif'; g.fillText('綿 100%', 400, 320);
+    g.font = '18px sans-serif'; g.fillStyle = '#777'; g.fillText('サンプルの洗濯表示タグ', 400, 400);
+    return c;
+  }
+  function roundRect(g, x, y, w, h, r){ g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
+
+  function makeFace(){
+    const c = document.createElement('canvas'); c.width = 600; c.height = 750;
+    const g = c.getContext('2d');
+    const bg = g.createLinearGradient(0, 0, 0, 750); bg.addColorStop(0, '#fde9ef'); bg.addColorStop(1, '#e6eefc');
+    g.fillStyle = bg; g.fillRect(0, 0, 600, 750);
+    const skin = '#f5d3ba';
+    g.fillStyle = '#3d2b25'; ell(g, 300, 350, 240, 270); g.fill();                 // 後ろ髪
+    g.fillStyle = skin; g.fillRect(250, 600, 100, 160); ell(g, 300, 750, 200, 70); g.fill(); // 首と肩
+    g.fillStyle = skin; ell(g, 112, 430, 26, 44); g.fill(); ell(g, 488, 430, 26, 44); g.fill(); // 耳
+    g.fillStyle = skin; ell(g, 300, 410, 190, 250); g.fill();                      // 顔
+    g.fillStyle = '#3d2b25'; g.beginPath(); g.moveTo(104, 330);                    // 前髪
+    g.quadraticCurveTo(120, 140, 300, 130); g.quadraticCurveTo(480, 140, 496, 330);
+    g.quadraticCurveTo(470, 240, 400, 222); g.quadraticCurveTo(340, 250, 300, 236);
+    g.quadraticCurveTo(250, 252, 200, 222); g.quadraticCurveTo(130, 240, 104, 330); g.fill();
+    // おでこのニキビ
+    g.fillStyle = 'rgba(214,82,82,.75)'; dot(g, 268, 292, 6); dot(g, 330, 305, 5);
+    // 眉
+    g.strokeStyle = '#4a3328'; g.lineWidth = 8; g.lineCap = 'round';
+    g.beginPath(); g.moveTo(190, 352); g.quadraticCurveTo(225, 336, 262, 348); g.stroke();
+    g.beginPath(); g.moveTo(338, 348); g.quadraticCurveTo(375, 336, 410, 352); g.stroke();
+    // くま
+    g.fillStyle = 'rgba(120,80,120,.16)'; ell(g, 226, 432, 42, 16); g.fill(); ell(g, 374, 432, 42, 16); g.fill();
+    // 目
+    g.fillStyle = '#fff'; ell(g, 226, 400, 34, 20); g.fill(); ell(g, 374, 400, 34, 20); g.fill();
+    g.fillStyle = '#3b2a22'; dot(g, 226, 401, 15); dot(g, 374, 401, 15);
+    g.fillStyle = '#fff'; dot(g, 231, 395, 4); dot(g, 379, 395, 4);
+    // 鼻と毛穴
+    g.strokeStyle = 'rgba(160,110,90,.7)'; g.lineWidth = 4;
+    g.beginPath(); g.moveTo(300, 420); g.quadraticCurveTo(292, 470, 280, 492); g.quadraticCurveTo(300, 502, 318, 492); g.stroke();
+    g.fillStyle = 'rgba(150,100,80,.35)';
+    [[278, 478], [286, 486], [272, 488], [322, 478], [314, 486], [328, 488], [296, 470], [306, 466]].forEach(([x, y]) => dot(g, x, y, 2.2));
+    // ほほ（右のほほ＝画面左は赤み、左のほほ＝画面右はニキビ跡）
+    g.fillStyle = 'rgba(236,110,110,.28)'; ell(g, 210, 520, 58, 34); g.fill();
+    g.fillStyle = 'rgba(236,140,140,.16)'; ell(g, 392, 520, 50, 30); g.fill();
+    g.fillStyle = 'rgba(190,90,80,.55)'; dot(g, 380, 512, 6); dot(g, 404, 530, 5); dot(g, 392, 544, 4); dot(g, 414, 505, 4);
+    // 口
+    g.strokeStyle = '#c0635b'; g.lineWidth = 7;
+    g.beginPath(); g.moveTo(258, 572); g.quadraticCurveTo(300, 600, 342, 572); g.stroke();
+    g.font = '18px sans-serif'; g.fillStyle = '#8a7a8a'; g.textAlign = 'center'; g.fillText('サンプルの顔（イラスト）', 300, 720);
+    return c;
+  }
+  function ell(g, x, y, rx, ry){ g.beginPath(); g.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2); }
+  function dot(g, x, y, r){ g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill(); }
+})();
+</script>
+</body>
+</html>
